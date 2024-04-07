@@ -160,13 +160,7 @@ const addEmployee = () => {
   })
 };
 
-// Update Employee Role (INCOMPLETE)
-const updateInquire = {
-  type: 'input',
-  name: 'id',
-  message: "Which employee role would you like to update?"
-};
-
+// Update Employee Role
 const updateEmployeeRole = () => {
   const sql1 = `SELECT CONCAT (first_name, " ", last_name) AS name FROM employee`;
   db.query(sql1, (err, employees) => {
