@@ -102,45 +102,59 @@ const addEmployee = () => {
           }
         ])
         .then((res) => {
-          const managerName = res.manager.split(' ');
-          const firstName = managerName[0];
-          const lastName = managerName[1];
-          const sql3 = `SELECT 
-            id
-            FROM employee 
-            WHERE first_name = ? AND last_name = ?`;
-          const params3 = [firstName, lastName];
-          
-          db.query(sql3, params3, (err, manager) => {
+          const sql3 = `SELECT id
+            FROM role
+            WHERE title = ?`;
+          const params3 = res.role;
+  
+          db.query(sql3, params3, (err, role) => {
             if (err) {
-              console.error("Error with retrieving ID for manager.");
+              console.error("Error with retrieving role ID.");
             };
-            const managerID = manager[0].id;
-
-            const sql4 = `SELECT id
-              FROM role
-              WHERE title = ?`;
-            const params4 = res.role;
-
-            db.query(sql4, params4, (err, role) => {
-              if (err) {
-                console.error("Error with retrieving ID role manager.");
-              };
-              const roleID = role[0].id;
-
+            const roleID = role[0].id;
+  
+            if (res.manager === "None") {
               const sql5 = `INSERT
                 INTO employee (first_name, last_name, role_id, manager_id)
-                VALUES (?, ?, ?, ?)`;
-              const params5 = [res.firstName, res.lastName, roleID, managerID];
-
+                VALUES (?, ?, ?, NULL)`;
+              const params5 = [res.firstName, res.lastName, roleID];
               db.query(sql5, params5, (err, rows) => {
                 if (err) {
                   console.error("Error with employee insert.");
                 }
                 console.log("Added employee to database");
                 viewEmployees();
+              });
+
+            } else {
+              const managerName = res.manager.split(' ');
+              const firstName = managerName[0];
+              const lastName = managerName[1];
+              const sql4 = `SELECT 
+                id
+                FROM employee 
+                WHERE first_name = ? AND last_name = ?`;
+              const params4 = [firstName, lastName];
+  
+              db.query(sql4, params4, (err, manager) => {
+                if (err) {
+                  console.error("Error with retrieving ID for manager.");
+                };
+                const managerID = manager[0].id;
+    
+                const sql5 = `INSERT
+                  INTO employee (first_name, last_name, role_id, manager_id)
+                  VALUES (?, ?, ?, ?)`;
+                const params5 = [res.firstName, res.lastName, roleID, managerID];
+                db.query(sql5, params5, (err, rows) => {
+                  if (err) {
+                    console.error("Error with employee insert.");
+                  }
+                  console.log("Added employee to database");
+                  viewEmployees();
+                })
               })
-            })
+            }
           })
         })
     })
