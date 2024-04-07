@@ -53,47 +53,98 @@ const viewEmployees = () => {
 };
 
 // Add Employee (INCOMPLETE)
-const inquireAddEmployee = [{
-    type: 'input',
-    name: 'firstName',
-    message: "What is the employee's FIRST name?"
-  },
-  {
-    type: 'input',
-    name: 'lastName',
-    message: "What is the employee's LAST name?"
-  },
-  {
-    type: 'list',
-    name: 'roleId',
-    message: "What is the employee's role?",
-    choices: [
-      'Salesperson',
-      'Lead Engineer',
-      'Software Engineer',
-      'Account Manager',
-      'Accountant',
-      'Legal Team Lead',
-      "Lawyer"
-    ]
-  }
-];
 
 const addEmployee = () => {
-  inquirer
-    .prompt(inquireAddEmployee)
-    .then((res) => {
-      const params = [res.firstName, res.lastName, res.roleID, res.managerID]
-      const sql = 'INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)'
 
-      db.query(sql, params, (err, rows) => {
-        if (err) {
-          console.error("Error with request.");
-        }
-        console.log("Added employee to database");
-        viewEmployees();
-      })
-    });
+  // Gather employee roles
+  const sql1 = 'SELECT * FROM role';
+  db.query(sql1, (err, roleRows) => {
+    if (err) {
+      console.error("Error: Cannot retrieve role array.");
+    }
+    const roleArray = roleRows.map((x) => x.title);
+
+    // Gather managers
+    const sql2 = `SELECT 
+      id,
+      CONCAT (first_name, " ", last_name) AS manager
+      FROM employee where manager_id IS NULL`
+    db.query(sql2, (err, managerRows) => {
+      if (err) {
+        console.error("Error: Cannot retrieve manager array.");
+      }
+      const managerArray = managerRows.map((x) => x.manager);
+      managerArray.push("None");
+
+      inquirer
+        .prompt([
+          {
+            type: 'input',
+            name: 'firstName',
+            message: "What is the employee's FIRST name?"
+          },
+          {
+            type: 'input',
+            name: 'lastName',
+            message: "What is the employee's LAST name?"
+          },
+          {
+            type: 'list',
+            name: 'role',
+            message: "What is the employee's role?",
+            choices: roleArray
+          },
+          {
+            type: 'list',
+            name: 'manager',
+            message: "Who is the employee's manager?",
+            choices: managerArray
+          }
+        ])
+        .then((res) => {
+          const managerName = res.manager.split(' ');
+          const firstName = managerName[0];
+          const lastName = managerName[1];
+          const sql3 = `SELECT 
+            id
+            FROM employee 
+            WHERE first_name = ? AND last_name = ?`;
+          const params3 = [firstName, lastName];
+          
+          db.query(sql3, params3, (err, manager) => {
+            if (err) {
+              console.error("Error with retrieving ID for manager.");
+            };
+            const managerID = manager[0].id;
+
+            const sql4 = `SELECT id
+              FROM role
+              WHERE title = ?`;
+            const params4 = res.role;
+
+            db.query(sql4, params4, (err, role) => {
+              if (err) {
+                console.error("Error with retrieving ID role manager.");
+              };
+              const roleID = role[0].id;
+
+              const sql5 = `INSERT
+                INTO employee (first_name, last_name, role_id, manager_id)
+                VALUES (?, ?, ?, ?)`;
+              const params5 = [res.firstName, res.lastName, roleID, managerID];
+
+              db.query(sql5, params5, (err, rows) => {
+                if (err) {
+                  console.error("Error with employee insert.");
+                }
+                console.log("Added employee to database");
+                viewEmployees();
+              })
+            })
+          })
+        })
+    })
+  })
 };
 
 // Update Employee Role (INCOMPLETE)
@@ -124,7 +175,6 @@ const viewRoles = () => {
 };
 
 // Add role
-
 const addRole = () => {
 
   const sql = 'SELECT * FROM department';
@@ -132,7 +182,7 @@ const addRole = () => {
     if (err) {
       console.error("Error: Cannot retrieve department array.");
     }
-    const array = rows.map((x) => x.name);
+    const deptArray = rows.map((x) => x.name);
 
     inquirer
       .prompt([
@@ -150,7 +200,7 @@ const addRole = () => {
           type: 'list',
           name: 'departmentName',
           message: 'Which department does the role belong to?',
-          choices: array
+          choices: deptArray
         }
       ])
       .then((res) => {
@@ -212,7 +262,7 @@ const addDepartment = () => {
         if (err) {
           console.error("Error with request.");
         }
-        console.log("Added employee to database");
+        console.log("Added department to database");
         viewDepartment();
       })
     });
@@ -231,7 +281,7 @@ const promptUser = () => {
           viewEmployees();
         };
         if (res.command === 'Add Employee') {
-          console.log('POST EMPLOYEE');
+          addEmployee();
         };
         if (res.command === 'Update Employee Role') {
           console.log('PUT ROLE');
@@ -249,7 +299,8 @@ const promptUser = () => {
           addDepartment();
         };
         if (res.command === 'Quit') {
-          quitInquirer();
+          // quitInquirer();
+          test();
         };
     })
 };
