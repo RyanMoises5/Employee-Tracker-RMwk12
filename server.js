@@ -52,8 +52,7 @@ const viewEmployees = () => {
     });
 };
 
-// Add Employee (INCOMPLETE)
-
+// Add Employee
 const addEmployee = () => {
 
   // Gather employee roles
@@ -162,11 +161,89 @@ const addEmployee = () => {
 };
 
 // Update Employee Role (INCOMPLETE)
-const updateEmployeeRole = {
+const updateInquire = {
   type: 'input',
   name: 'id',
   message: "Which employee role would you like to update?"
 };
+
+const updateEmployeeRole = () => {
+  const sql1 = `SELECT CONCAT (first_name, " ", last_name) AS name FROM employee`;
+  db.query(sql1, (err, employees) => {
+    if (err) {
+      console.error("Error: Cannot retrieve employees.");
+    }
+    const employeesArray = employees.map((x) => x.name);
+
+    const sql2 = `SELECT title FROM role`;
+    db.query(sql2, (err, roles) => {
+      if (err) {
+        console.error("Error: Cannot retrieve roles.");
+      }
+      const rolesArray = roles.map((x) => x.title);
+
+      inquirer
+        .prompt([
+          {
+            type: 'list',
+            name: 'employee',
+            message: 'Whose role would you like to update?',
+            choices: employeesArray
+          },
+          {
+            type: 'list',
+            name: 'role',
+            message: 'Which role do you want to assign the selected employee?',
+            choices: rolesArray
+          }
+        ])
+        .then((res) => {
+          const employeeName = res.employee.split(' ');
+          const firstName = employeeName[0];
+          const lastName = employeeName[1];
+
+          const sql3 = `SELECT 
+            id
+            FROM employee 
+            WHERE first_name = ? AND last_name = ?`;
+          const params3 = [firstName, lastName];
+
+          db.query(sql3, params3, (err, employee) => {
+            if (err) {
+              console.error("Error with retrieving ID for employee.");
+            };
+
+            const employeeID = employee[0].id;
+            const sql4 = `SELECT
+              id
+              FROM role
+              WHERE title = ?`;
+            const params4 = res.role;
+
+            db.query(sql4, params4, (err, role) => {
+              if (err) {
+                console.error("Error with retrieving ID for role.");
+              };
+
+              const roleID = role[0].id;
+              const sql5 = `UPDATE employee
+                SET role_id = ?
+                WHERE id = ?`;
+              const params5 = [roleID, employeeID]
+
+              db.query(sql5, params5, (err, row) => {
+                if (err) {
+                  console.error("Error with updating employee role.");
+                };
+                console.log("Updated employee role");
+                viewEmployees();
+              })
+            })
+          })
+        })
+    })
+  })
+}
 
 // View all roles
 const viewRoles = () => {
@@ -190,7 +267,6 @@ const viewRoles = () => {
 
 // Add role
 const addRole = () => {
-
   const sql = 'SELECT * FROM department';
   db.query(sql, (err, rows) => {
     if (err) {
@@ -298,7 +374,7 @@ const promptUser = () => {
           addEmployee();
         };
         if (res.command === 'Update Employee Role') {
-          console.log('PUT ROLE');
+          updateEmployeeRole();
         };
         if (res.command === 'View All Roles') {
           viewRoles();
@@ -313,8 +389,7 @@ const promptUser = () => {
           addDepartment();
         };
         if (res.command === 'Quit') {
-          // quitInquirer();
-          test();
+          quitInquirer();
         };
     })
 };
