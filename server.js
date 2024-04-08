@@ -1,5 +1,4 @@
 const inquirer = require('inquirer');
-
 const mysql = require('mysql2');
 
 const db = mysql.createConnection(
@@ -12,24 +11,9 @@ const db = mysql.createConnection(
   console.log(`Connected to the employees_db database.`)
 );
 
-const initialPrompt = {
-  type: 'list',
-  name: 'command',
-  message: 'What would you like to do?',
-  choices: [
-    'View All Employees',
-    'Add Employee',
-    'Update Employee Role',
-    'View All Roles',
-    'Add Role',
-    'View All Departments',
-    'Add Department',
-    'Quit'
-    ]
-};
-
 // View All Employees
 const viewEmployees = () => {
+    // Views all employee data, including their role title, salary, and manager
     const sql = 
       `SELECT 
       employee.id, 
@@ -55,7 +39,7 @@ const viewEmployees = () => {
 // Add Employee
 const addEmployee = () => {
 
-  // Gather employee roles
+  // Gather employee roles from database
   const sql1 = 'SELECT * FROM role';
   db.query(sql1, (err, roleRows) => {
     if (err) {
@@ -63,7 +47,7 @@ const addEmployee = () => {
     }
     const roleArray = roleRows.map((x) => x.title);
 
-    // Gather managers
+    // Gather managers from database
     const sql2 = `SELECT 
       id,
       CONCAT (first_name, " ", last_name) AS manager
@@ -73,8 +57,10 @@ const addEmployee = () => {
         console.error("Error: Cannot retrieve manager array.");
       }
       const managerArray = managerRows.map((x) => x.manager);
+      // Adds additional option to select no manager
       managerArray.push("None");
 
+      // Gathers inputted first name, inputted last name, selected role, and selected manager
       inquirer
         .prompt([
           {
@@ -101,6 +87,8 @@ const addEmployee = () => {
           }
         ])
         .then((res) => {
+
+          // Retrieves ID of selected role
           const sql3 = `SELECT id
             FROM role
             WHERE title = ?`;
@@ -112,7 +100,10 @@ const addEmployee = () => {
             };
             const roleID = role[0].id;
   
+            // Creates data if no manager is selected
             if (res.manager === "None") {
+
+              // Creates data of employee using first name, last name, and role ID
               const sql5 = `INSERT
                 INTO employee (first_name, last_name, role_id, manager_id)
                 VALUES (?, ?, ?, NULL)`;
@@ -125,7 +116,10 @@ const addEmployee = () => {
                 viewEmployees();
               });
 
+            // Creates data if manager is selected
             } else {
+
+              // Retrieves ID of chosen manager
               const managerName = res.manager.split(' ');
               const firstName = managerName[0];
               const lastName = managerName[1];
@@ -140,7 +134,8 @@ const addEmployee = () => {
                   console.error("Error with retrieving ID for manager.");
                 };
                 const managerID = manager[0].id;
-    
+                
+                // Creates data of employee using first name, last name, role ID, and manager ID
                 const sql5 = `INSERT
                   INTO employee (first_name, last_name, role_id, manager_id)
                   VALUES (?, ?, ?, ?)`;
@@ -162,6 +157,8 @@ const addEmployee = () => {
 
 // Update Employee Role
 const updateEmployeeRole = () => {
+
+  // Retrieves employee names as strings in FIRSTNAME LASTNAME format
   const sql1 = `SELECT CONCAT (first_name, " ", last_name) AS name FROM employee`;
   db.query(sql1, (err, employees) => {
     if (err) {
@@ -169,6 +166,7 @@ const updateEmployeeRole = () => {
     }
     const employeesArray = employees.map((x) => x.name);
 
+    // Retrieves role titles from database
     const sql2 = `SELECT title FROM role`;
     db.query(sql2, (err, roles) => {
       if (err) {
@@ -176,6 +174,7 @@ const updateEmployeeRole = () => {
       }
       const rolesArray = roles.map((x) => x.title);
 
+      // Asks user to first choose an employee, then choose which role to be reassigned
       inquirer
         .prompt([
           {
@@ -192,6 +191,8 @@ const updateEmployeeRole = () => {
           }
         ])
         .then((res) => {
+
+          // Finds employee ID from employee name
           const employeeName = res.employee.split(' ');
           const firstName = employeeName[0];
           const lastName = employeeName[1];
@@ -208,6 +209,8 @@ const updateEmployeeRole = () => {
             };
 
             const employeeID = employee[0].id;
+
+            // Finds role ID from role title
             const sql4 = `SELECT
               id
               FROM role
@@ -220,6 +223,8 @@ const updateEmployeeRole = () => {
               };
 
               const roleID = role[0].id;
+
+              // Updates role_id in employee table using the id of the employee
               const sql5 = `UPDATE employee
                 SET role_id = ?
                 WHERE id = ?`;
@@ -241,6 +246,7 @@ const updateEmployeeRole = () => {
 
 // View all roles
 const viewRoles = () => {
+  // View all roles including the associated department name
   const sql = 
     `SELECT 
     role.id,
@@ -261,6 +267,8 @@ const viewRoles = () => {
 
 // Add role
 const addRole = () => {
+
+  // Gather names of all departments in database
   const sql = 'SELECT * FROM department';
   db.query(sql, (err, rows) => {
     if (err) {
@@ -287,6 +295,7 @@ const addRole = () => {
           choices: deptArray
         }
       ])
+      // Adds new role using user input for title and salary and selected department
       .then((res) => {
         const sql1 = `SELECT id 
           FROM department
@@ -298,6 +307,7 @@ const addRole = () => {
             console.error("Error with request.");
           };
 
+          // Creates role data in database
           const sql2 = 'INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)'
           const params2 = [res.title, res.salary, rows[0].id]
           db.query(sql2, params2, (err, rows) => {
@@ -314,10 +324,7 @@ const addRole = () => {
 
 // View All Departments
 const viewDepartment = () => {
-  const sql = 
-    `SELECT 
-    *
-    FROM department`;
+  const sql = `SELECT * FROM department`;
 
   db.query(sql, (err, rows) => {
     if (err) {
@@ -329,15 +336,13 @@ const viewDepartment = () => {
 };
 
 // Add Department
-const inquireAddDepartment = {
-  type: 'input',
-  name: 'department',
-  message: 'What department would you like to add?'
-};
-
 const addDepartment = () => {
   inquirer
-    .prompt(inquireAddDepartment)
+    .prompt({
+      type: 'input',
+      name: 'department',
+      message: 'What department would you like to add?'
+    })
     .then((res) => {
       const params = [res.department]
       const sql = 'INSERT INTO department (name) VALUES (?)'
@@ -352,15 +357,32 @@ const addDepartment = () => {
     });
 };
 
-// Quit
+// Quits app
 const quitInquirer = () => {
   process.exit();
 };
 
 const promptUser = () => {
+  // Ask user what command to perform
   inquirer
-    .prompt(initialPrompt)
-    .then((res) => {
+    .prompt({
+      type: 'list',
+      name: 'command',
+      message: 'What would you like to do?',
+      choices: [
+        'View All Employees',
+        'Add Employee',
+        'Update Employee Role',
+        'View All Roles',
+        'Add Role',
+        'View All Departments',
+        'Add Department',
+        'Quit'
+        ]
+    })
+
+    // Performs functions depending on choice
+    .then((res) => { 
         if (res.command === 'View All Employees') {
           viewEmployees();
         };
@@ -388,4 +410,5 @@ const promptUser = () => {
     })
 };
 
+// Initializes app
 promptUser();
